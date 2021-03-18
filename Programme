@@ -1,0 +1,226 @@
+
+"""
+Created on Sat Mar 13 14:26:34 2021
+
+@author: Anton
+"""
+
+import numpy as np
+import time
+import matplotlib.pyplot as pp
+import math as m
+
+
+def ReductionGauss(Aaug):
+    n, m = np.shape(Aaug)
+    for k in range(0, n-1):
+        for i in range(k+1, n):
+            gik = Aaug[i, k] / Aaug[k, k]
+            Aaug[i, :] = Aaug[i, :] - gik*Aaug[k, :]
+    return Aaug
+
+
+def ResolutionSystTriSup(Aaug):
+    n, m = np.shape(Aaug)
+    x = np.zeros(n)
+    if m != m+1:
+        x = np.zeros(n)
+    for i in range(n-1, -1, -1):
+        s = 0
+        for k in range(i+1, n):
+            s += x[k]*Aaug[i, k]
+        x[i] = (Aaug[i, n] - s) / Aaug[i, i]
+    return x
+
+
+def Gauss(A, B):
+    Aaug = np.column_stack([A, B])
+    Taug = ReductionGauss(Aaug)
+    X = ResolutionSystTriSup(Taug)
+    print('matrice augmenté: ', Aaug)
+    print('matrice réduite : ', Taug)
+    return X
+
+
+def DecompositionLU(A):
+    gik_val = []
+    n, m = np.shape(A)
+    for k in range(0, n-1):
+        for i in range(k+1, n):
+            gik = A[i, k] / A[k, k]
+            gik_val.append(gik)
+            A[i, :] = A[i, :] - gik*A[k, :]
+    U = A
+    print("Upper : ", "\n",  U, "\n")
+    L = np.zeros((n, n))
+    n, m = np.shape(A)
+    k = 0
+    for i in range(0, n):
+        L[i, k] = gik_val[i] / gik_val[i]
+        k += 1
+    line = 0
+    for k in range(0, n-1):
+        for i in range(k+1, n):
+            L[i, k] = gik_val[line]
+            line += 1
+    print("Lower :", "\n", L, "\n")
+    return L, U
+
+
+def ResolutionLU(L, U, B):
+    Y = Gauss(L, B)
+    X = Gauss(U, Y)
+    return X
+
+
+def GaussChoixPivotPartiel(A, B):
+    Aaug = np.column_stack((A, B))
+    Aaug = np.copy(Aaug)
+    n, m = Aaug.shape
+    g = 0
+    for i in range(0, n-1):
+        for j in range(i+1, n):
+            if abs(Aaug[j, i]) > abs(Aaug[i, i]):
+                T = np.copy(Aaug[j, :])
+                Aaug[j, :] = Aaug[i, :]
+                Aaug[i, :] = T
+        if Aaug[i, i] != 0:
+            for k in range(i+1, n):
+                g = (Aaug[k, i] / Aaug[i, i])
+                Aaug[k, :] = (Aaug[k, :] - (g*Aaug[i, :]))
+    print("Taug=", Aaug)
+    print("")
+    X = ResolutionSystTriSup(Aaug)
+    return(X)
+
+
+def GaussChoixPivotTotal(A, B):
+    Aaug = np.concatenate((A, B), axis=1)
+    n, m = np.shape(Aaug)
+    print('\n', Aaug)
+    transf_colonne = []
+    transf_ligne = []
+    for k in range(0, len(Aaug)):
+        pivotmax = abs(Aaug[k, k])
+        for k1 in range(k, len(Aaug)):
+            for i in range(k, len(Aaug)):
+                if abs(Aaug[i, k1]) > pivotmax:
+                    pivotmax = abs(Aaug[i, k1])
+                    ligne_max = i
+                    colonne_max = k1
+        transf_colonne.append([k, colonne_max])
+        transf_ligne.append([k, ligne_max])
+        new = Aaug[k].copy()
+        Aaug[k] = Aaug[ligne_max]
+        Aaug[ligne_max] = new
+        for i in range(0, len(Aaug)):
+            new1 = Aaug[i, k].copy()
+            Aaug[i, k] = Aaug[i, colonne_max]
+            Aaug[i, colonne_max] = new1
+        for j in range(k+1, len(Aaug)):
+            gik = Aaug[j, k] / Aaug[k, k]
+            Aaug[i, :] = Aaug[j, :] - gik*Aaug[k, :]
+    X = np.reshape(ResolutionSystTriSup(Aaug), (i+1, 1))
+    for i in range(len(transf_colonne)-1, -1, -1):
+        if transf_colonne[i][0] != transf_colonne[i][1]:
+            new = X[transf_colonne[i][0], 0]
+            X[transf_colonne[i][0], 0] = X[transf_colonne[i][1], 0]
+            X[transf_colonne[i][1], 0] = new
+    return X
+    print("X = ", X)
+
+
+def courbe1():
+    x = []
+    y = []
+    y0 = []
+    y1 = []
+    y2 = []
+    for i in range(100, 500, 50):
+        A = np.random.rand(i, i)
+        B = np.random.rand(i, 1)
+        time_init = time.time()
+        Gauss(A, B)
+        time_end = time.time()
+        temps = time_end - time_init
+
+        time_init0 = time.time()
+        [L, U] = DecompositionLU(A)
+        ResolutionLU(L, U, B)
+        time_end0 = time.time()
+        temps0 = time_end0 - time_init0
+
+        time_init1 = time.time()
+        GaussChoixPivotPartiel(A, B)
+        time_end1 = time.time()
+        temps1 = time_end1 - time_init1
+
+        time_init2 = time.time()
+        GaussChoixPivotTotal(A, B)
+        time_end2 = time.time()
+        temps2 = time_end2 - time_init2
+
+        x.append(i)
+        y.append(temps)
+        y0.append(temps0)
+        y1.append(temps1)
+        y2.append(temps2)
+    pp.plot(x, y, label='Gauss')
+    pp.plot(x, y0, label='Resolution LU')
+    pp.plot(x, y1, label='Pivot Partiel')
+    pp.plot(x, y2, label='Pivot Total')
+    pp.title("Temps de calcul en fonction de la dimension")
+    pp.xlabel("Dimension")
+    pp.ylabel("Temps en sec")
+    pp.legend()
+    pp.show()
+
+
+def courbe2():
+    x = []
+    y = []
+    y1 = []
+    y2 = []
+    y3 = []
+    for i in range(100, 500, 50):
+        A = np.array(np.random.random(size=(i, i)))
+        B = np.array(np.random.random(size=(i, 1)))
+        C = np.copy(A)
+        """
+        a = Gauss(A, B)
+        erreur = np.linalg.norm(A@a - np.ravel(B))
+
+        L, U = DecompositionLU(A)
+        b = ResolutionLU(L, U, B)
+        erreur1 = np.linalg.norm(C@b - np.ravel(B))
+
+        c = GaussChoixPivotPartiel(A, B)
+        erreur2 = np.linalg.norm(A@c - np.ravel(B))
+        print("Norme de l'erreur", erreur2)
+        """
+        d = GaussChoixPivotTotal(A, B)
+        print("npD=", np.ravel(d), "npB =", np.ravel(B))
+        erreur3 = np.linalg.norm(A@(np.ravel(d)) - np.ravel(B))
+        print(erreur3)
+        x.append(i)
+        """
+        y.append(erreur)
+        y1.append(erreur1)
+        y2.append(erreur2)
+        print("Norme de l'erreur", erreur1)
+        """
+        y3.append(erreur3)
+    """
+    pp.plot(x, y, label='Gauss')
+    pp.plot(x, y1, label='Pivot Partiel')
+    pp.plot(x, y2, label='LU')
+    """
+    pp.plot(x, y3, Label='PivotT')
+    pp.title("||AX -B|| en fonction de la dimension")
+    pp.xlabel("Dimension")
+    pp.ylabel("Erreur")
+    pp.legend()
+    pp.show()
+
+
+courbe2()
